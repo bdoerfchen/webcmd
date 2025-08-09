@@ -16,11 +16,15 @@ import (
 )
 
 type chirouter struct {
-	router chi.Router
+	router    chi.Router
+	sanitizer *valueSanitizer
 }
 
 func New(ctx context.Context, routes []config.Route, executor interfaces.Executer) *chirouter {
-	r := &chirouter{router: chi.NewRouter()}
+	r := &chirouter{
+		router:    chi.NewRouter(),
+		sanitizer: newSanitizer(),
+	}
 
 	// A good base middleware stack
 	r.router.Use(middleware.RequestID)
@@ -47,19 +51,33 @@ func (r *chirouter) addRoute(route config.Route, executor interfaces.Executer, l
 
 	// Register route to router
 	optimizedRoute := OptimizeRoute(route)
-	r.router.MethodFunc(route.Method, routePattern, func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
+	r.router.MethodFunc(route.Method, routePattern, func(w http.ResponseWriter, req *http.Request) {
+		ctx := req.Context()
 		startTime := time.Now()
+		scopedRoute := route // Create copy for this handled scope to modify
 
 		// Reusable end-of-request logging function
 		logFn := func(responseSize int, responseCode int) {
-			url := r.URL.String()
+			url := req.URL.String()
 			elapsed := time.Since(startTime)
 			logger.InfoContext(ctx, fmt.Sprintf("%s %s -> %v", route.Method, url, responseCode),
 				slog.Duration("responseTime", elapsed),
 				slog.Int("size", responseSize),
-				slog.String("userAgent", r.UserAgent()),
+				slog.String("userAgent", req.UserAgent()),
 			)
+		}
+
+		// Load URL parameters as env variables
+		params := optimizedRoute.RequestParameters(req)
+		for key, value := range params {
+			// Skip unset values to keep defaults and reduce sanitization efforts
+			if value == "" {
+				continue
+			}
+			// convert key to env variable format
+			key = config.RouteParamPrefix + strings.ToUpper(key)
+			// Sanitize input and add to route env map
+			scopedRoute.Env[key] = r.sanitizer.Sanitize(value)
 		}
 
 		// On handle, start executor for route

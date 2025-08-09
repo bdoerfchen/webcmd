@@ -27,10 +27,9 @@ func (s *server) Run(ctx context.Context, handler http.Handler) error {
 
 	// Setup
 	server := http.Server{
-		Addr:         host,
-		Handler:      handler,
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		Addr:        host,
+		Handler:     handler,
+		ReadTimeout: 5 * time.Second,
 	}
 	go func() {
 		// Goroutine watching the context cancellation in parallel

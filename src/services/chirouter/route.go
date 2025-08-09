@@ -2,8 +2,10 @@ package chirouter
 
 import (
 	"net/http"
+	"regexp"
 
 	"github.com/bdoerfchen/webcmd/src/model/config"
+	"github.com/go-chi/chi/v5"
 )
 
 const DefaultKey = -1
@@ -11,6 +13,7 @@ const DefaultKey = -1
 type OptimizedRoute struct {
 	config.Route
 	StatusCodeMap map[int]ExitCodeResponse
+	ParamNames    []string
 }
 
 type ExitCodeResponse struct {
@@ -34,7 +37,7 @@ func OptimizeRoute(route config.Route) (result OptimizedRoute) {
 			codeMap.StatusCode = http.StatusOK
 		}
 		if codeMap.StatusCode >= 1000 {
-			// Arbitrary limit - not that I really care
+			// Arbitrary limit
 			codeMap.StatusCode = 999
 		}
 
@@ -53,6 +56,9 @@ func OptimizeRoute(route config.Route) (result OptimizedRoute) {
 		}
 	}
 
+	// Parse paramters
+	result.ParamNames = paramNamesInRoute(route.Route)
+
 	return
 }
 
@@ -62,4 +68,36 @@ func (o *OptimizedRoute) ExitCodeResponse(code int) ExitCodeResponse {
 	}
 
 	return o.StatusCodeMap[DefaultKey]
+}
+
+var paramMatcher = regexp.MustCompile(`{([^\/\\:]+)(?:\:[^}\/]+)*}`)
+
+func paramNamesInRoute(routePattern string) (result []string) {
+	groups := paramMatcher.FindAllStringSubmatch(routePattern, -1)
+	if groups == nil {
+		return
+	}
+
+	for _, g := range groups {
+		result = append(result, g[1])
+	}
+
+	return
+}
+
+// Read all query and path parameters of a http.Request. Path params are dominant
+func (o *OptimizedRoute) RequestParameters(r *http.Request) map[string]string {
+	result := make(map[string]string)
+
+	// Add query parameters
+	for _, paramName := range o.QueryParams {
+		result[paramName] = r.URL.Query().Get(paramName)
+	}
+
+	// Add route parameters, potentially overwriting query params on double initialization
+	for _, paramName := range o.ParamNames {
+		result[paramName] = chi.URLParam(r, paramName)
+	}
+
+	return result
 }

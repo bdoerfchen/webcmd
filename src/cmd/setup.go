@@ -66,14 +66,14 @@ func checkConfig(appConfig *config.AppConfig, logger *slog.Logger) error {
 
 	var countWarning, countCritical int
 	// Check all routes
-	for i, route := range appConfig.Routes {
+	for _, route := range appConfig.Routes {
 		messages := route.Check()
 		if len(messages) == 0 {
 			continue
 		}
 
 		// Log remarks with their respective logging function and increase counters
-		logger.Info(fmt.Sprintf("route[%v] with remarks:", i))
+		logger.Info(fmt.Sprintf("%s with remarks:", route.String()))
 		for _, e := range messages {
 			level := "info: "
 			switch e.Level {
@@ -81,7 +81,7 @@ func checkConfig(appConfig *config.AppConfig, logger *slog.Logger) error {
 				level = "warn: "
 				countWarning++
 			case config.ErrorLevelCritical:
-				level = " err: "
+				level = "crit: "
 				countCritical++
 			}
 
@@ -89,13 +89,13 @@ func checkConfig(appConfig *config.AppConfig, logger *slog.Logger) error {
 		}
 	}
 
+	logger.Debug("configuration check done")
+
 	if countWarning+countCritical == 0 {
 		logger.Info("config ok")
 	} else {
-		logger.Info("config with problems")
+		logger.Warn("config with problems")
 	}
-
-	logger.Debug("configuration check done")
 
 	if countCritical > 0 {
 		return fmt.Errorf("encountered %v critical remarks", countCritical)

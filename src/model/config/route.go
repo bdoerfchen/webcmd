@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os/exec"
+	"regexp"
 	"runtime"
 	"slices"
 	"strings"
@@ -18,6 +19,7 @@ type Route struct {
 	Route       string
 	Command     string
 	Args        []string
+	QueryParams []string
 	StatusCodes []ExitCodeMapping
 	Env         map[string]string
 }
@@ -45,6 +47,8 @@ func DefaultRoute() Route {
 		StatusCodes: []ExitCodeMapping{
 			{ExitCode: &zero, StatusCode: 200, ResponseEmpty: false},
 		},
+		Env:         make(map[string]string),
+		QueryParams: make([]string, 0),
 	}
 }
 
@@ -73,5 +77,15 @@ func (r *Route) Check() (result RouteErrorCollection) {
 		result = append(result, RouteError{Message: "no default status code defined", Level: ErrorLevelInfo})
 	}
 
+	// Check query params
+	for _, param := range r.QueryParams {
+		if invalidQueryParam.MatchString(param) {
+			result = append(result, RouteError{Message: fmt.Sprintf("query param '%s' is not a valid name", param), Level: ErrorLevelCritical})
+		}
+	}
+
 	return
 }
+
+// Must not start with a number, or contain something else than ASCII characters, numbers or underscores
+var invalidQueryParam = regexp.MustCompile(`^[\d]|[^\w\d_]+`)
