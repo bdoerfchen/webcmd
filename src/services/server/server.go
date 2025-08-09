@@ -3,8 +3,8 @@ package server
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/bdoerfchen/webcmd/src/logging"
 )
@@ -20,16 +20,25 @@ func New(config Config) *server {
 }
 
 func (s *server) Run(ctx context.Context, handler http.Handler) error {
-	// Setup
-	logger := logging.FromContext(ctx)
+	// Logger setup
 	host := fmt.Sprintf("%s:%v", s.config.Host, s.config.Port)
+	logger := logging.FromContext(ctx)
 	logger.Info(fmt.Sprintf("listening on %s", host))
 
-	// Listen
-	err := http.ListenAndServe(host, handler)
-	if err != nil {
-		logger.Error("error while listening", slog.String("error", err.Error()))
+	// Setup
+	server := http.Server{
+		Addr:         host,
+		Handler:      handler,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
 	}
+	go func() {
+		// Goroutine watching the context cancellation in parallel
+		<-ctx.Done()
+		// ...and shutting down the server
+		server.Shutdown(ctx)
+	}()
 
-	return err
+	// Listen
+	return server.ListenAndServe()
 }

@@ -1,0 +1,5 @@
+# golang
+__debug*
+
+# webcmd config
+*.conf

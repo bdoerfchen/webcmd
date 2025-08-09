@@ -23,12 +23,11 @@ func (e *executor) Execute(ctx context.Context, route config.Route) (result []by
 
 	// Initialize buffer to save command's output in
 	outputBuffer := bytes.NewBuffer(make([]byte, 0))
-	errorBuffer := bytes.NewBuffer(make([]byte, 0))
 
 	// Setup command with stdout buffer
 	cmd := exec.CommandContext(ctx, command, route.Args...)
 	cmd.Stdout = outputBuffer
-	cmd.Stderr = errorBuffer
+	cmd.Stderr = cmd.Stdout
 
 	// Add environment variables
 	for key, value := range route.Env {
@@ -38,7 +37,7 @@ func (e *executor) Execute(ctx context.Context, route config.Route) (result []by
 	// Start and wait for command to finish
 	if err := cmd.Run(); err != nil {
 		if exitErr, isExitErr := err.(*exec.ExitError); isExitErr {
-			return errorBuffer.Bytes(), exitErr.ExitCode(), nil
+			return outputBuffer.Bytes(), exitErr.ExitCode(), nil
 		} else {
 			return nil, -1, fmt.Errorf("error during command execution: %w", err)
 		}

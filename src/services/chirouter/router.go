@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"slices"
 	"strings"
 	"time"
 
@@ -20,8 +19,6 @@ type chirouter struct {
 	router chi.Router
 }
 
-var validMethods = []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete}
-
 func New(ctx context.Context, routes []config.Route, executor interfaces.Executer) *chirouter {
 	r := &chirouter{router: chi.NewRouter()}
 
@@ -32,12 +29,14 @@ func New(ctx context.Context, routes []config.Route, executor interfaces.Execute
 	r.router.Use(middleware.Recoverer)
 
 	logger := logging.FromContext(ctx)
-	logger.Info("begin route registration", slog.Int("count", len(routes)))
+	logger.Debug("begin route registration", slog.Int("count", len(routes)))
 
 	// Register all routes
 	for _, route := range routes {
 		r.addRoute(route, executor, logger)
 	}
+
+	logger.Debug("route registration done")
 
 	return r
 }
@@ -46,17 +45,9 @@ func (r *chirouter) addRoute(route config.Route, executor interfaces.Executer, l
 	routeLogger := logger.With(slog.String("route", route.Route))
 	routePattern, _ := strings.CutSuffix(route.Route, "/")
 
-	// Check method is valid or skip route
-	method := strings.ToUpper(route.Method)
-	if !slices.Contains(validMethods, method) {
-		logger.Warn("route fail: "+routePattern+" (invalid method for route)",
-			slog.String("method", method),
-		)
-		return
-	}
-
 	// Register route to router
-	r.router.MethodFunc(method, routePattern, func(w http.ResponseWriter, r *http.Request) {
+	optimizedRoute := OptimizeRoute(route)
+	r.router.MethodFunc(route.Method, routePattern, func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		startTime := time.Now()
 
@@ -64,7 +55,7 @@ func (r *chirouter) addRoute(route config.Route, executor interfaces.Executer, l
 		logFn := func(responseSize int, responseCode int) {
 			url := r.URL.String()
 			elapsed := time.Since(startTime)
-			logger.InfoContext(ctx, fmt.Sprintf("%s %s -> %v", method, url, responseCode),
+			logger.InfoContext(ctx, fmt.Sprintf("%s %s -> %v", route.Method, url, responseCode),
 				slog.Duration("responseTime", elapsed),
 				slog.Int("size", responseSize),
 				slog.String("userAgent", r.UserAgent()),
@@ -87,15 +78,20 @@ func (r *chirouter) addRoute(route config.Route, executor interfaces.Executer, l
 		}
 
 		// Respond with command result and mapped status code from exit code
-		responseCode := route.StatusFromExitCode(exitCode)
-		w.WriteHeader(responseCode)
-		w.Write(result)
+		exitResponse := optimizedRoute.ExitCodeResponse(exitCode)
+		w.WriteHeader(exitResponse.StatusCode)
+
+		writtenLen := 0
+		if !exitResponse.ResponseEmpty {
+			w.Write(result)
+			writtenLen = len(result)
+		}
 
 		// Log and finish
-		logFn(len(result), responseCode)
+		logFn(writtenLen, exitResponse.StatusCode)
 	})
 
-	logger.Info("route ok: " + routePattern)
+	logger.Debug("- " + routePattern + " (ok)")
 }
 
 func (r *chirouter) Handler() http.Handler {
