@@ -12,18 +12,13 @@ const DefaultKey = -1
 
 type OptimizedRoute struct {
 	config.Route
-	StatusCodeMap map[int]ExitCodeResponse
+	StatusCodeMap map[int]config.ExitCodeMapping
 	ParamNames    []string
-}
-
-type ExitCodeResponse struct {
-	StatusCode    int
-	ResponseEmpty bool
 }
 
 func OptimizeRoute(route config.Route) (result OptimizedRoute) {
 	result.Route = route
-	result.StatusCodeMap = make(map[int]ExitCodeResponse)
+	result.StatusCodeMap = make(map[int]config.ExitCodeMapping)
 
 	// Convert all mapings and add them to map
 	for _, codeMap := range route.StatusCodes {
@@ -42,15 +37,12 @@ func OptimizeRoute(route config.Route) (result OptimizedRoute) {
 		}
 
 		// Add entry
-		result.StatusCodeMap[key] = ExitCodeResponse{
-			StatusCode:    codeMap.StatusCode,
-			ResponseEmpty: codeMap.ResponseEmpty,
-		}
+		result.StatusCodeMap[key] = codeMap
 	}
 
 	// Add defaults
 	if _, ok := result.StatusCodeMap[DefaultKey]; !ok {
-		result.StatusCodeMap[DefaultKey] = ExitCodeResponse{
+		result.StatusCodeMap[DefaultKey] = config.ExitCodeMapping{
 			StatusCode:    http.StatusInternalServerError,
 			ResponseEmpty: true,
 		}
@@ -62,7 +54,7 @@ func OptimizeRoute(route config.Route) (result OptimizedRoute) {
 	return
 }
 
-func (o *OptimizedRoute) ExitCodeResponse(code int) ExitCodeResponse {
+func (o *OptimizedRoute) ExitCodeResponse(code int) config.ExitCodeMapping {
 	if response, ok := o.StatusCodeMap[code]; ok {
 		return response
 	}

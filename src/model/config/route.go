@@ -22,13 +22,15 @@ type Route struct {
 	QueryParams []string          // List of allowed url query parameters
 	StatusCodes []ExitCodeMapping // List of exit-code to status-code mappings
 	Env         map[string]string // Environment variable map
+	Headers     map[string]string // Default response headers for this route
 	AllowBody   bool              // Enable reading the request body and writing it into stdin of the exec environment
 }
 
 type ExitCodeMapping struct {
-	ExitCode      *int // The base exit code from which to map from
-	StatusCode    int  // Status code to map to
-	ResponseEmpty bool // Send empty response for this exit code
+	ExitCode      *int              // The base exit code from which to map from
+	StatusCode    int               // Status code to map to
+	ResponseEmpty bool              // Send empty response for this exit code
+	Headers       map[string]string // Special response headers for this exit code
 }
 
 // Return a default route configuration that can be used as the base for further configuration.
