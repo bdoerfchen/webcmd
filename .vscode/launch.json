@@ -12,6 +12,7 @@
             "program": "main.go",
             "args": [
                 "run", "-v",
+                "-c", "examples/parameters/server.conf"
             ]
         }
     ]
