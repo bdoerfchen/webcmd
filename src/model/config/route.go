@@ -15,13 +15,14 @@ const RouteParamPrefix = "WC_"
 var allowedMethods = []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete}
 
 type Route struct {
-	Method      string
-	Route       string
-	Command     string
-	Args        []string
-	QueryParams []string
-	StatusCodes []ExitCodeMapping
-	Env         map[string]string
+	Method      string            // HTTP method
+	Route       string            // Route pattern, includes the url path parameters
+	Command     string            // Command path
+	Args        []string          // List of arguments for the command
+	QueryParams []string          // List of allowed url query parameters
+	StatusCodes []ExitCodeMapping // List of exit-code to status-code mappings
+	Env         map[string]string // Environment variable map
+	AllowBody   bool              // Enable reading the request body and writing it into stdin of the exec environment
 }
 
 type ExitCodeMapping struct {
@@ -30,6 +31,7 @@ type ExitCodeMapping struct {
 	ResponseEmpty bool // Send empty response for this exit code
 }
 
+// Return a default route configuration that can be used as the base for further configuration.
 func DefaultRoute() Route {
 	defaultCommand := "bash"
 	const defaultMessage = "echo Your webcmd works! Visit https://github.com/bdoerfchen/webcmd to learn more about how to use it."
@@ -64,6 +66,11 @@ func (r *Route) Check() (result RouteErrorCollection) {
 	r.Method = strings.ToUpper(r.Method)
 	if !slices.Contains(allowedMethods, r.Method) {
 		result = append(result, RouteError{Message: fmt.Sprintf("http method '%s' is not allowed", r.Method), Level: ErrorLevelCritical})
+	}
+
+	// Add info when body is not allowed for POST or PUT route
+	if (r.Method == http.MethodPost || r.Method == http.MethodPut) && !r.AllowBody {
+		result = append(result, RouteError{Message: "body will be ignored", Level: ErrorLevelInfo})
 	}
 
 	// Check command

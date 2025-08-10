@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/bdoerfchen/webcmd/src/model/config"
+	"github.com/bdoerfchen/webcmd/src/interfaces"
 )
 
 type executor struct{}
@@ -16,21 +16,22 @@ func New() *executor {
 	return &executor{}
 }
 
-func (e *executor) Execute(ctx context.Context, route config.Route) (result []byte, exitCode int, err error) {
+func (e *executor) Execute(ctx context.Context, config interfaces.ExecConfig) (result []byte, exitCode int, err error) {
 	// Parse command and arguments
-	parts := strings.SplitAfterN(route.Command, " ", 2)
+	parts := strings.SplitAfterN(config.Command, " ", 2)
 	command := strings.TrimSpace(parts[0])
 
 	// Initialize buffer to save command's output in
 	outputBuffer := bytes.NewBuffer(make([]byte, 0))
 
 	// Setup command with stdout buffer
-	cmd := exec.CommandContext(ctx, command, route.Args...)
+	cmd := exec.CommandContext(ctx, command, config.Args...)
 	cmd.Stdout = outputBuffer
 	cmd.Stderr = cmd.Stdout
+	cmd.Stdin = config.Stdin
 
 	// Add environment variables
-	for key, value := range route.Env {
+	for key, value := range config.Env {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", key, value))
 	}
 

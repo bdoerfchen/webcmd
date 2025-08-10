@@ -58,8 +58,8 @@ func (l *configLoader) Load(ctx context.Context, path string) (*config.AppConfig
 		}
 
 		// Go over read config and validate
-		var result config.AppConfig
-		result.Server = output.Server
+		result := config.DefaultAppConfig()
+		copier.CopyWithOption(&result.Server, &output.Server, copier.Option{IgnoreEmpty: true})
 		for _, configRoute := range output.Routes {
 			copiedRoute := config.DefaultRoute()
 			copier.CopyWithOption(&copiedRoute, &configRoute, copier.Option{IgnoreEmpty: true})
