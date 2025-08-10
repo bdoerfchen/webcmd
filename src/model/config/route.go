@@ -32,20 +32,21 @@ type ExitCodeMapping struct {
 
 func DefaultRoute() Route {
 	defaultCommand := "bash"
-	defaultArgs := []string{"-c", "echo This is webcmd. Who are you?"}
+	const defaultMessage = "echo Your webcmd works! Visit https://github.com/bdoerfchen/webcmd to learn more about how to use it."
+	defaultArgs := []string{"-c", defaultMessage}
 	if runtime.GOOS == "windows" {
 		defaultCommand = "cmd"
-		defaultArgs = []string{"/C", "echo This is webcmd. Who are you?"}
+		defaultArgs = []string{"/C", defaultMessage}
 	}
 
 	var zero int = 0
 	return Route{
 		Method:  http.MethodGet,
-		Route:   "/{FILE}",
+		Route:   "/*",
 		Command: defaultCommand,
 		Args:    defaultArgs,
 		StatusCodes: []ExitCodeMapping{
-			{ExitCode: &zero, StatusCode: 200, ResponseEmpty: false},
+			{ExitCode: &zero, StatusCode: 200},
 		},
 		Env:         make(map[string]string),
 		QueryParams: make([]string, 0),
@@ -62,7 +63,7 @@ func (r *Route) Check() (result RouteErrorCollection) {
 	// Check method
 	r.Method = strings.ToUpper(r.Method)
 	if !slices.Contains(allowedMethods, r.Method) {
-		result = append(result, RouteError{Message: fmt.Sprintf("http method '%s' is now allowed", r.Method), Level: ErrorLevelCritical})
+		result = append(result, RouteError{Message: fmt.Sprintf("http method '%s' is not allowed", r.Method), Level: ErrorLevelCritical})
 	}
 
 	// Check command
