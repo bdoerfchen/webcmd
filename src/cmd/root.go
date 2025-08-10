@@ -77,7 +77,7 @@ func runExec(ctx context.Context) {
 	// Read config
 	logger.Debug("load server configuration")
 	loader := configloader.New()
-	config, err := loader.Load(setupCtx, "")
+	config, err := loader.Load(setupCtx, flagConfigFilePath)
 	if err != nil {
 		logger.Error("failed to load config file: " + err.Error())
 		shutdown(logger, false)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"maps"
 	"net/http"
 	"strings"
 	"time"
@@ -54,7 +55,6 @@ func (r *chirouter) addRoute(route config.Route, executor interfaces.Executer, l
 	r.router.MethodFunc(route.Method, routePattern, func(w http.ResponseWriter, req *http.Request) {
 		ctx := req.Context()
 		startTime := time.Now()
-		scopedRoute := route // Create copy for this handled scope to modify
 
 		// Reusable end-of-request logging function
 		logFn := func(responseSize int, responseCode int) {
@@ -67,6 +67,17 @@ func (r *chirouter) addRoute(route config.Route, executor interfaces.Executer, l
 			)
 		}
 
+		// Build exec config
+		execConfig := interfaces.ExecConfig{
+			Command: route.Command,
+			Args:    route.Args,
+			Env:     maps.Clone(route.Env),
+			Stdin:   nil,
+		}
+		if route.AllowBody {
+			execConfig.Stdin = req.Body
+		}
+
 		// Load URL parameters as env variables
 		params := optimizedRoute.RequestParameters(req)
 		for key, value := range params {
@@ -77,11 +88,11 @@ func (r *chirouter) addRoute(route config.Route, executor interfaces.Executer, l
 			// convert key to env variable format
 			key = config.RouteParamPrefix + strings.ToUpper(key)
 			// Sanitize input and add to route env map
-			scopedRoute.Env[key] = r.sanitizer.Sanitize(value)
+			execConfig.Env[key] = r.sanitizer.Sanitize(value)
 		}
 
 		// On handle, start executor for route
-		result, exitCode, err := executor.Execute(ctx, route)
+		result, exitCode, err := executor.Execute(ctx, execConfig)
 		if err != nil {
 			// Unexpected error, code 500, no response body
 			routeLogger.ErrorContext(ctx,
