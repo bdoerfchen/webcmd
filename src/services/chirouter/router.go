@@ -106,10 +106,19 @@ func (r *chirouter) addRoute(route config.Route, executor interfaces.Executer, l
 			return
 		}
 
-		// Respond with command result and mapped status code from exit code
+		// Load response config for exit code
 		exitResponse := optimizedRoute.ExitCodeResponse(exitCode)
-		w.WriteHeader(exitResponse.StatusCode)
 
+		// Set headers (default and exit code related)
+		for header, value := range route.Headers {
+			w.Header().Add(header, value)
+		}
+		for header, value := range exitResponse.Headers {
+			w.Header().Add(header, value)
+		}
+
+		// Respond with command result and mapped status code from exit code
+		w.WriteHeader(exitResponse.StatusCode)
 		writtenLen := 0
 		if !exitResponse.ResponseEmpty {
 			w.Write(result)
