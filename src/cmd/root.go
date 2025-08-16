@@ -35,6 +35,7 @@ var runCmd = &cobra.Command{
 
 var flagVerbose bool
 var flagDryRun bool
+var flagNoColor bool
 
 var flagServerHost string
 var flagServerPort uint16
@@ -45,6 +46,7 @@ var flagConfigFilePath string
 func Start(ctx context.Context) {
 	// Persistent flags
 	rootCmd.PersistentFlags().BoolVarP(&flagVerbose, "verbose", "v", false, "Set the log level from INFO to DEBUG")
+	rootCmd.PersistentFlags().BoolVar(&flagNoColor, "no-color", false, "Disable the logger's colored format")
 
 	// Config file path flag
 	runCmd.Flags().StringVarP(&flagConfigFilePath, "config-file", "c", "", "Path to the webcmd config file")
@@ -66,7 +68,7 @@ func runExec(ctx context.Context) {
 	if flagVerbose {
 		logLevel = slog.LevelDebug
 	}
-	logger := logging.New(logLevel)
+	logger := logging.New(logLevel, !flagNoColor)
 	setupCtx, finishSetup := context.WithTimeout(ctx, 30*time.Second)
 	setupCtx = logging.AddToContext(setupCtx, logger)
 	logger.Info("server start")
