@@ -73,7 +73,3 @@ func (l *configLoader) Load(ctx context.Context, path string) (*config.AppConfig
 
 	return &result, nil
 }
-
-func AppendRoute(appConfig *config.AppConfig, route *config.Route, logger *slog.Logger) {
-
-}
