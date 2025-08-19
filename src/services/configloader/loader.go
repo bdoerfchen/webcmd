@@ -53,11 +53,12 @@ func (l *configLoader) Load(ctx context.Context, path string) (*config.AppConfig
 		// Return default if no specific config file should be loaded
 		return &result, nil
 	}
+	logger.Debug(fmt.Sprintf("using config file %s", path))
 
 	var parsedConfig config.AppConfig
 	err = yaml.Unmarshal(content, &parsedConfig)
 	if err != nil {
-		return nil, fmt.Errorf("could not read config file: %w", err)
+		return nil, fmt.Errorf("error while parsing config file: %w", err)
 	}
 
 	// Use default config as base and overlay parsed server config onto it
