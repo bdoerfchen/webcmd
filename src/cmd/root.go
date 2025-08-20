@@ -8,10 +8,13 @@ import (
 	"time"
 
 	"github.com/bdoerfchen/webcmd/src/logging"
+	"github.com/bdoerfchen/webcmd/src/model/execution"
+	"github.com/bdoerfchen/webcmd/src/model/process"
 	"github.com/bdoerfchen/webcmd/src/services/chirouter"
 	"github.com/bdoerfchen/webcmd/src/services/configloader"
 	"github.com/bdoerfchen/webcmd/src/services/executer"
 	"github.com/bdoerfchen/webcmd/src/services/server"
+	"github.com/bdoerfchen/webcmd/src/services/shellexecuter"
 	"github.com/spf13/cobra"
 )
 
@@ -95,9 +98,17 @@ func runExec(ctx context.Context) {
 		shutdown(logger, false)
 	}
 
-	// Setup router with cmd executer
-	exec := executer.New()
-	router := chirouter.New(setupCtx, config.Routes, exec)
+	// Setup router with executers (proc + shell)
+	router := chirouter.New(setupCtx,
+		config.Routes,
+		&execution.ExecuterCollection{
+			Proc: executer.New(), // Normal proc executer
+			Shell: shellexecuter.New( // Shell executer with pool size of 10
+				10,
+				process.Template{Command: "/usr/bin/bash", Args: []string{"-s"}, OpenStdIn: true},
+			),
+		},
+	)
 	finishSetup() // Cancel setupCtx
 	logger.Debug("setup finished")
 	fmt.Println() // Empty log line

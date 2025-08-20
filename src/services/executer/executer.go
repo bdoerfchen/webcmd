@@ -1,13 +1,12 @@
 package executer
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"os/exec"
-	"strings"
 
-	"github.com/bdoerfchen/webcmd/src/interfaces"
+	"github.com/bdoerfchen/webcmd/src/model/execution"
+	"github.com/bdoerfchen/webcmd/src/model/process"
 )
 
 type executor struct{}
@@ -16,34 +15,34 @@ func New() *executor {
 	return &executor{}
 }
 
-func (e *executor) Execute(ctx context.Context, config interfaces.ExecConfig) (result []byte, exitCode int, err error) {
-	// Parse command and arguments
-	parts := strings.SplitAfterN(config.Command, " ", 2)
-	command := strings.TrimSpace(parts[0])
+func (e *executor) Execute(ctx context.Context, config execution.Config) (proc *process.Process, exitCode int, err error) {
+	// Prepare new command
+	cmd, err := process.Prepare(&process.Template{
+		Command:   config.Command,
+		Args:      config.Args,
+		OpenStdIn: false,
+	})
+	if err != nil {
+		return nil, 0, fmt.Errorf("unable to prepare command: %w", err)
+	}
 
-	// Initialize buffer to save command's output in
-	outputBuffer := bytes.NewBuffer(make([]byte, 0))
-
-	// Setup command with stdout buffer
-	cmd := exec.CommandContext(ctx, command, config.Args...)
-	cmd.Stdout = outputBuffer
-	cmd.Stderr = cmd.Stdout
-	cmd.Stdin = config.Stdin
+	// Add stdin from request, may be nil
+	cmd.Proc.Stdin = config.Stdin
 
 	// Add environment variables
 	for key, value := range config.Env {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", key, value))
+		cmd.Proc.Env = append(cmd.Proc.Env, fmt.Sprintf("%s=%s", key, value))
 	}
 
 	// Start and wait for command to finish
-	if err := cmd.Run(); err != nil {
+	if err := cmd.Proc.Run(); err != nil {
 		if exitErr, isExitErr := err.(*exec.ExitError); isExitErr {
-			return outputBuffer.Bytes(), exitErr.ExitCode(), nil
-		} else {
-			return nil, -1, fmt.Errorf("error during command execution: %w", err)
+			return cmd, exitErr.ExitCode(), nil
 		}
+
+		return nil, -1, fmt.Errorf("error during command execution: %w", err)
 	}
 
 	// Return output
-	return outputBuffer.Bytes(), 0, nil
+	return cmd, 0, nil
 }

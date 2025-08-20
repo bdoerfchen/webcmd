@@ -3,7 +3,6 @@ package configloader
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,7 +13,7 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-const DefaultConfigFile = "server.conf"
+const DefaultConfigFile = "server.config.yaml"
 
 type configLoader struct{}
 
@@ -29,13 +28,18 @@ func (l *configLoader) Load(ctx context.Context, path string) (*config.AppConfig
 
 	// Handle no path defined
 	if path == "" {
+		logger.Info("no config file path provided. Try default file path: " + DefaultConfigFile)
 		path = DefaultConfigFile
-		logger.Debug("using default config path", slog.String("path", path))
 		useDefaultPath = true
 	}
 
 	file, err := os.Stat(path)
 	if err != nil {
+		if useDefaultPath {
+			logger.Warn("default file does not exist. Using default route configuration.")
+			return &result, nil
+		}
+
 		return nil, fmt.Errorf("unable to open file: %w", err)
 	}
 	// Append default file name if provided path is a directory
