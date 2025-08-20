@@ -8,26 +8,29 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bdoerfchen/webcmd/src/common/config"
+	"github.com/bdoerfchen/webcmd/src/common/execution"
 	"github.com/bdoerfchen/webcmd/src/logging"
-	"github.com/bdoerfchen/webcmd/src/model/config"
-	"github.com/bdoerfchen/webcmd/src/model/execution"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
 
 type chirouter struct {
-	router    chi.Router
-	sanitizer *valueSanitizer
+	router             chi.Router
+	sanitizer          *valueSanitizer
+	executerCollection *execution.ExecuterCollection
 }
 
-func New(ctx context.Context, routes []config.Route, executorCollection *execution.ExecuterCollection) *chirouter {
-	r := &chirouter{
-		router:    chi.NewRouter(),
-		sanitizer: newSanitizer(),
+func New(executerCollection *execution.ExecuterCollection) *chirouter {
+	return &chirouter{
+		router:             chi.NewRouter(),
+		sanitizer:          newSanitizer(),
+		executerCollection: executerCollection,
 	}
+}
 
-	// A good base middleware stack
-	r.router.Use(middleware.RequestID)
+func (r *chirouter) Register(ctx context.Context, routes []config.Route) error {
+	// Basic middleware registration
 	r.router.Use(middleware.StripSlashes)
 	r.router.Use(middleware.RealIP)
 	r.router.Use(middleware.Recoverer)
@@ -37,7 +40,7 @@ func New(ctx context.Context, routes []config.Route, executorCollection *executi
 
 	// Register all routes
 	for _, route := range routes {
-		executer, err := executorCollection.For(&route)
+		executer, err := r.executerCollection.For(&route)
 		if err != nil {
 			logger.Error("no executer available for route " + route.String())
 			continue
@@ -47,9 +50,10 @@ func New(ctx context.Context, routes []config.Route, executorCollection *executi
 
 	logger.Debug("route registration done")
 
-	return r
+	return nil
 }
 
+// Actual route registration with the handler function definition
 func (r *chirouter) addRoute(route config.Route, executor execution.Executer, logger *slog.Logger) {
 	routeLogger := logger.With(slog.String("route", route.Route))
 	routePattern, _ := strings.CutSuffix(route.Route, "/")
@@ -128,7 +132,7 @@ func (r *chirouter) addRoute(route config.Route, executor execution.Executer, lo
 		logFn(startTime, req, writtenLen, exitResponse.StatusCode)
 	})
 
-	logger.Debug("- " + routePattern + " (ok)")
+	logger.Debug(fmt.Sprintf("- %s %s", route.Method, routePattern))
 }
 
 func (r *chirouter) Handler() http.Handler {

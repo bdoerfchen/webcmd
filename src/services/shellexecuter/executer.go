@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"os/exec"
 	"strings"
 
@@ -56,5 +57,8 @@ func (e *shellExecuter) Execute(ctx context.Context, config execution.Config) (p
 	}
 
 	return shell, 0, nil
+}
 
+func (e *shellExecuter) Describe() (mode execution.ExecMode, attributes []any) {
+	return execution.ModeShell, []any{slog.String("shell", e.pool.template.Command), slog.Int("size", e.pool.Capacity())}
 }

@@ -99,22 +99,33 @@ func runExec(ctx context.Context) {
 		shutdown(logger, false)
 	}
 
-	// Setup router with executers (proc + shell)
-	router := chirouter.New(setupCtx,
-		config.Routes,
-		&execution.ExecuterCollection{
-			Proc: executer.New(), // Normal proc executer
-			Shell: shellexecuter.New( // Shell executer with pool
-				config.Modules.ShellPool.Size,
-				process.Template{
-					Command:   config.Modules.ShellPool.Path,
-					Args:      config.Modules.ShellPool.Args,
-					OpenStdIn: true,
-				},
-			),
+	// Setup executers (proc + shell)
+	var executers execution.ExecuterCollection
+	executers.Add(executer.New())          // Normal proc executer
+	executers.SetExcept(shellexecuter.New( // Shell executer with pool, except for windows
+		config.Modules.ShellPool.Size,
+		process.Template{
+			Command:   config.Modules.ShellPool.Path,
+			Args:      config.Modules.ShellPool.Args,
+			OpenStdIn: true,
 		},
-	)
-	logger.Debug("using shell pool", slog.String("shell", config.Modules.ShellPool.Path), slog.Int("size", int(config.Modules.ShellPool.Size)))
+	), "windows")
+
+	// Setup routers with executers
+	var router router.Router = chirouter.New(&executers)
+	logger.Debug("router initialized:")
+	for _, executer := range executers.Available() {
+		mode, attributes := executer.Describe()
+		logger.Debug(fmt.Sprintf("- enabled %s executer", string(mode)), attributes...)
+	}
+
+	// Register routes
+	err = router.Register(setupCtx, config.Routes)
+	if err != nil {
+		logger.Error("error during route registration: " + err.Error())
+		shutdown(logger, false)
+	}
+
 	finishSetup() // Cancel setupCtx
 	logger.Debug("setup finished")
 	fmt.Println() // Empty log line

@@ -9,13 +9,13 @@ import (
 	"github.com/bdoerfchen/webcmd/src/common/process"
 )
 
-type executor struct{}
+type executer struct{}
 
-func New() *executor {
-	return &executor{}
+func New() *executer {
+	return &executer{}
 }
 
-func (e *executor) Execute(ctx context.Context, config execution.Config) (proc *process.Process, exitCode int, err error) {
+func (e *executer) Execute(ctx context.Context, config execution.Config) (proc *process.Process, exitCode int, err error) {
 	// Prepare new command
 	cmd, err := process.Prepare(&process.Template{
 		Command:   config.Command,
@@ -45,4 +45,8 @@ func (e *executor) Execute(ctx context.Context, config execution.Config) (proc *
 
 	// Return output
 	return cmd, 0, nil
+}
+
+func (e *executer) Describe() (mode execution.ExecMode, attributes []any) {
+	return execution.ModeProc, []any{}
 }
