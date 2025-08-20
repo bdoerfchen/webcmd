@@ -67,6 +67,7 @@ func (l *configLoader) Load(ctx context.Context, path string) (*config.AppConfig
 
 	// Use default config as base and overlay parsed server config onto it
 	copier.CopyWithOption(&result.Server, &parsedConfig.Server, copier.Option{IgnoreEmpty: true})
+	copier.CopyWithOption(&result.Modules, &parsedConfig.Modules, copier.Option{IgnoreEmpty: true, DeepCopy: true})
 	for _, configRoute := range parsedConfig.Routes {
 		// Go over parsed config's routes and append their content overlayed on the default to the result config
 		copiedRoute := config.DefaultRoute()

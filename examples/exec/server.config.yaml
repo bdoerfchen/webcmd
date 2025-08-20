@@ -1,3 +1,6 @@
+modules:
+  shellPool:
+    size: 4 # Larger shell pool than default
 routes:
 - route: "/exec/shell"
   exec:

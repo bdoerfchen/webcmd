@@ -103,12 +103,17 @@ func runExec(ctx context.Context) {
 		config.Routes,
 		&execution.ExecuterCollection{
 			Proc: executer.New(), // Normal proc executer
-			Shell: shellexecuter.New( // Shell executer with pool size of 10
-				10,
-				process.Template{Command: "/usr/bin/bash", Args: []string{"-s"}, OpenStdIn: true},
+			Shell: shellexecuter.New( // Shell executer with pool
+				config.Modules.ShellPool.Size,
+				process.Template{
+					Command:   config.Modules.ShellPool.Path,
+					Args:      config.Modules.ShellPool.Args,
+					OpenStdIn: true,
+				},
 			),
 		},
 	)
+	logger.Debug("using shell pool", slog.String("shell", config.Modules.ShellPool.Path), slog.Int("size", int(config.Modules.ShellPool.Size)))
 	finishSetup() // Cancel setupCtx
 	logger.Debug("setup finished")
 	fmt.Println() // Empty log line

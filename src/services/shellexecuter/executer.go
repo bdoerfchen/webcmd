@@ -15,7 +15,7 @@ type shellExecuter struct {
 	pool *shellPool
 }
 
-func New(size int, template process.Template) *shellExecuter {
+func New(size uint, template process.Template) *shellExecuter {
 	return &shellExecuter{
 		pool: NewPool(size, template),
 	}
@@ -34,10 +34,10 @@ func (e *shellExecuter) Execute(ctx context.Context, config execution.Config) (p
 		envExportCmd.WriteString(fmt.Sprintf("export %s=%s; ", key, value))
 	}
 
-	// - Body preparation | A bit more complicated here as everyting runs over stdin
+	// - Body preparation | A bit more complicated here as everything runs over stdin
 	// 1. Write provided shell command (with env variables exports)
 	shell.StdIn.Write([]byte(envExportCmd.String() + config.Command))
-	// 2. Write body
+	// 2. Write body (in next line)
 	if config.Stdin != nil {
 		shell.StdIn.Write([]byte("\n"))
 		io.Copy(shell.StdIn, config.Stdin)
