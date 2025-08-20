@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os/exec"
 	"regexp"
+	"runtime"
 	"slices"
 	"strings"
 )
@@ -51,6 +52,13 @@ func (r *Route) Check() (result RouteErrorCollection) {
 	for _, param := range r.QueryParams {
 		if invalidQueryParam.MatchString(param) {
 			result = append(result, RouteError{Message: fmt.Sprintf("query param '%s' is not a valid name", param), Level: ErrorLevelCritical})
+		}
+	}
+
+	// OS specific remarks
+	if runtime.GOOS == "windows" {
+		if r.Exec.Shell != nil {
+			result = append(result, RouteError{Message: "the 'shell' exec mode is not supported on windows", Level: ErrorLevelCritical})
 		}
 	}
 
