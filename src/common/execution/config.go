@@ -4,7 +4,7 @@ import (
 	"io"
 	"maps"
 
-	"github.com/bdoerfchen/webcmd/src/model/config"
+	"github.com/bdoerfchen/webcmd/src/common/config"
 )
 
 type Config struct {

@@ -7,8 +7,8 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/bdoerfchen/webcmd/src/model/execution"
-	"github.com/bdoerfchen/webcmd/src/model/process"
+	"github.com/bdoerfchen/webcmd/src/common/execution"
+	"github.com/bdoerfchen/webcmd/src/common/process"
 )
 
 type shellExecuter struct {

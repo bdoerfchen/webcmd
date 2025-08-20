@@ -7,9 +7,10 @@ import (
 	"os"
 	"time"
 
+	"github.com/bdoerfchen/webcmd/src/common/execution"
+	"github.com/bdoerfchen/webcmd/src/common/process"
+	"github.com/bdoerfchen/webcmd/src/common/router"
 	"github.com/bdoerfchen/webcmd/src/logging"
-	"github.com/bdoerfchen/webcmd/src/model/execution"
-	"github.com/bdoerfchen/webcmd/src/model/process"
 	"github.com/bdoerfchen/webcmd/src/services/chirouter"
 	"github.com/bdoerfchen/webcmd/src/services/configloader"
 	"github.com/bdoerfchen/webcmd/src/services/executer"

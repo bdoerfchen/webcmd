@@ -3,7 +3,7 @@ package shellexecuter
 import (
 	"context"
 
-	"github.com/bdoerfchen/webcmd/src/model/process"
+	"github.com/bdoerfchen/webcmd/src/common/process"
 )
 
 type shellPool struct {

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os/exec"
 
-	"github.com/bdoerfchen/webcmd/src/model/execution"
-	"github.com/bdoerfchen/webcmd/src/model/process"
+	"github.com/bdoerfchen/webcmd/src/common/execution"
+	"github.com/bdoerfchen/webcmd/src/common/process"
 )
 
 type executor struct{}

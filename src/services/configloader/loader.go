@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/bdoerfchen/webcmd/src/common/config"
 	"github.com/bdoerfchen/webcmd/src/logging"
-	"github.com/bdoerfchen/webcmd/src/model/config"
 	"github.com/jinzhu/copier"
 	"sigs.k8s.io/yaml"
 )

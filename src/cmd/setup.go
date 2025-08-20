@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/bdoerfchen/webcmd/src/model/config"
+	"github.com/bdoerfchen/webcmd/src/common/config"
 )
 
 const defaultRouteCommand = "echo Your webcmd works! Visit https://github.com/bdoerfchen/webcmd to learn more about how to use it."
