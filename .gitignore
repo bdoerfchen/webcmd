@@ -2,5 +2,5 @@
 __debug*
 
 # webcmd config
-webcmd
+webcmd*
 /*.conf

@@ -7,11 +7,15 @@ import (
 	"os"
 	"time"
 
+	"github.com/bdoerfchen/webcmd/src/common/execution"
+	"github.com/bdoerfchen/webcmd/src/common/process"
+	"github.com/bdoerfchen/webcmd/src/common/router"
 	"github.com/bdoerfchen/webcmd/src/logging"
 	"github.com/bdoerfchen/webcmd/src/services/chirouter"
 	"github.com/bdoerfchen/webcmd/src/services/configloader"
 	"github.com/bdoerfchen/webcmd/src/services/executer"
 	"github.com/bdoerfchen/webcmd/src/services/server"
+	"github.com/bdoerfchen/webcmd/src/services/shellexecuter"
 	"github.com/spf13/cobra"
 )
 
@@ -95,9 +99,33 @@ func runExec(ctx context.Context) {
 		shutdown(logger, false)
 	}
 
-	// Setup router with cmd executer
-	exec := executer.New()
-	router := chirouter.New(setupCtx, config.Routes, exec)
+	// Setup executers (proc + shell)
+	var executers execution.ExecuterCollection
+	executers.Add(executer.New())          // Normal proc executer
+	executers.SetExcept(shellexecuter.New( // Shell executer with pool, except for windows
+		config.Modules.ShellPool.Size,
+		process.Template{
+			Command:   config.Modules.ShellPool.Path,
+			Args:      config.Modules.ShellPool.Args,
+			OpenStdIn: true,
+		},
+	), "windows")
+
+	// Setup routers with executers
+	var router router.Router = chirouter.New(&executers)
+	logger.Debug("router initialized:")
+	for _, executer := range executers.Available() {
+		mode, attributes := executer.Describe()
+		logger.Debug(fmt.Sprintf("- enabled %s executer", string(mode)), attributes...)
+	}
+
+	// Register routes
+	err = router.Register(setupCtx, config.Routes)
+	if err != nil {
+		logger.Error("error during route registration: " + err.Error())
+		shutdown(logger, false)
+	}
+
 	finishSetup() // Cancel setupCtx
 	logger.Debug("setup finished")
 	fmt.Println() // Empty log line

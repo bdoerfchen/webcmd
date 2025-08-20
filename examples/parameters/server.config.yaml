@@ -1,0 +1,11 @@
+routes:
+- route: "/hello/{name}"
+  exec:
+    proc:
+      path: "bash"
+      args: ["-c", "echo Hello ${WC_NAME-user}!"]
+- route: "/*"
+  exec:
+    proc:
+      path: "echo"
+      args: ["Use 'GET /hello/<your-name>' to be greeted"]
