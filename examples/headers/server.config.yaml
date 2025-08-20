@@ -10,9 +10,9 @@ routes:
     statusCode: 200
     headers: {"X-Code": "200"}
   - exitCode: 1
-    statusCode: 201,
+    statusCode: 201
     headers: {"X-Code": "201"}
-  - statusCode: 400,
+  - statusCode: 400
     headers: {"X-Code": "400"}
 - route: "/*"
   exec:
