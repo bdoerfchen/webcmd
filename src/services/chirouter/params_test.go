@@ -3,7 +3,7 @@ package chirouter_test
 import (
 	"testing"
 
-	"github.com/bdoerfchen/webcmd/src/model/config"
+	"github.com/bdoerfchen/webcmd/src/common/config"
 	"github.com/bdoerfchen/webcmd/src/services/chirouter"
 	"github.com/stretchr/testify/assert"
 )

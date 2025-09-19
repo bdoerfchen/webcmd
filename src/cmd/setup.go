@@ -8,8 +8,10 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/bdoerfchen/webcmd/src/model/config"
+	"github.com/bdoerfchen/webcmd/src/common/config"
 )
+
+const defaultRouteCommand = "echo Your webcmd works! Visit https://github.com/bdoerfchen/webcmd to learn more about how to use it."
 
 func mergeCommandFlags(base *config.AppConfig, logger *slog.Logger) {
 	// --- Merge server config
@@ -41,16 +43,21 @@ func mergeCommandFlags(base *config.AppConfig, logger *slog.Logger) {
 		routeTouched = true
 	}
 
-	// Set command
+	// Set default process
+	var procConfig config.ExecProc
+	if runtime.GOOS == "windows" {
+		procConfig.Path = "cmd"
+		procConfig.Args = []string{"/C", defaultRouteCommand}
+	} else {
+		procConfig.Path = "bash"
+		procConfig.Args = []string{"-c", defaultRouteCommand}
+	}
+	route.Exec.Proc = &procConfig
+
+	// Overwrite shellarg when provided with --
 	parts := strings.SplitAfterN(strings.Join(os.Args, " "), " -- ", 2)
 	if len(parts) > 1 {
-		if runtime.GOOS == "windows" {
-			route.Command = "cmd"
-			route.Args = []string{"/C", parts[1]}
-		} else {
-			route.Command = "bash"
-			route.Args = []string{"-c", parts[1]}
-		}
+		procConfig.Args[1] = parts[1]
 		routeTouched = true
 	}
 

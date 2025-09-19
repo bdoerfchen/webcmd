@@ -4,31 +4,33 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"maps"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/bdoerfchen/webcmd/src/interfaces"
+	"github.com/bdoerfchen/webcmd/src/common/config"
+	"github.com/bdoerfchen/webcmd/src/common/execution"
 	"github.com/bdoerfchen/webcmd/src/logging"
-	"github.com/bdoerfchen/webcmd/src/model/config"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
 
 type chirouter struct {
-	router    chi.Router
-	sanitizer *valueSanitizer
+	router             chi.Router
+	sanitizer          *valueSanitizer
+	executerCollection *execution.ExecuterCollection
 }
 
-func New(ctx context.Context, routes []config.Route, executor interfaces.Executer) *chirouter {
-	r := &chirouter{
-		router:    chi.NewRouter(),
-		sanitizer: newSanitizer(),
+func New(executerCollection *execution.ExecuterCollection) *chirouter {
+	return &chirouter{
+		router:             chi.NewRouter(),
+		sanitizer:          newSanitizer(),
+		executerCollection: executerCollection,
 	}
+}
 
-	// A good base middleware stack
-	r.router.Use(middleware.RequestID)
+func (r *chirouter) Register(ctx context.Context, routes []config.Route) error {
+	// Basic middleware registration
 	r.router.Use(middleware.StripSlashes)
 	r.router.Use(middleware.RealIP)
 	r.router.Use(middleware.Recoverer)
@@ -38,17 +40,34 @@ func New(ctx context.Context, routes []config.Route, executor interfaces.Execute
 
 	// Register all routes
 	for _, route := range routes {
-		r.addRoute(route, executor, logger)
+		executer, err := r.executerCollection.For(&route)
+		if err != nil {
+			logger.Error("no executer available for route " + route.String())
+			continue
+		}
+		r.addRoute(route, executer, logger)
 	}
 
 	logger.Debug("route registration done")
 
-	return r
+	return nil
 }
 
-func (r *chirouter) addRoute(route config.Route, executor interfaces.Executer, logger *slog.Logger) {
+// Actual route registration with the handler function definition
+func (r *chirouter) addRoute(route config.Route, executor execution.Executer, logger *slog.Logger) {
 	routeLogger := logger.With(slog.String("route", route.Route))
 	routePattern, _ := strings.CutSuffix(route.Route, "/")
+
+	// Reusable end-of-request logging function for this route
+	logFn := func(startTime time.Time, req *http.Request, responseSize int, responseCode int) {
+		url := req.URL.String()
+		elapsed := time.Since(startTime)
+		logger.Info(fmt.Sprintf("%s %s -> %v", route.Method, url, responseCode),
+			slog.Duration("responseTime", elapsed),
+			slog.Int("size", responseSize),
+			slog.String("userAgent", req.UserAgent()),
+		)
+	}
 
 	// Register route to router
 	optimizedRoute := OptimizeRoute(route)
@@ -56,24 +75,8 @@ func (r *chirouter) addRoute(route config.Route, executor interfaces.Executer, l
 		ctx := req.Context()
 		startTime := time.Now()
 
-		// Reusable end-of-request logging function
-		logFn := func(responseSize int, responseCode int) {
-			url := req.URL.String()
-			elapsed := time.Since(startTime)
-			logger.InfoContext(ctx, fmt.Sprintf("%s %s -> %v", route.Method, url, responseCode),
-				slog.Duration("responseTime", elapsed),
-				slog.Int("size", responseSize),
-				slog.String("userAgent", req.UserAgent()),
-			)
-		}
-
-		// Build exec config
-		execConfig := interfaces.ExecConfig{
-			Command: route.Command,
-			Args:    route.Args,
-			Env:     maps.Clone(route.Env),
-			Stdin:   nil,
-		}
+		// Execution config
+		execConfig := execution.ConfigFromRoute(&route)
 		if route.AllowBody {
 			execConfig.Stdin = req.Body
 		}
@@ -102,7 +105,7 @@ func (r *chirouter) addRoute(route config.Route, executor interfaces.Executer, l
 			w.WriteHeader(http.StatusInternalServerError)
 
 			// Log and finish
-			logFn(0, http.StatusInternalServerError)
+			logFn(startTime, req, 0, http.StatusInternalServerError)
 			return
 		}
 
@@ -121,15 +124,15 @@ func (r *chirouter) addRoute(route config.Route, executor interfaces.Executer, l
 		w.WriteHeader(exitResponse.StatusCode)
 		writtenLen := 0
 		if !exitResponse.ResponseEmpty {
-			w.Write(result)
-			writtenLen = len(result)
+			w.Write(result.StdOutErr.Bytes())
+			writtenLen = len(result.StdOutErr.Bytes())
 		}
 
 		// Log and finish
-		logFn(writtenLen, exitResponse.StatusCode)
+		logFn(startTime, req, writtenLen, exitResponse.StatusCode)
 	})
 
-	logger.Debug("- " + routePattern + " (ok)")
+	logger.Debug(fmt.Sprintf("- %s %s", route.Method, routePattern))
 }
 
 func (r *chirouter) Handler() http.Handler {

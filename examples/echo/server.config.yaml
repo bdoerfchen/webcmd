@@ -1,0 +1,13 @@
+routes:
+- route: "/echo"
+  method: POST
+  allowBody: true
+  exec:
+    proc:
+      path: "bash"
+      args: ["-c", "cat -"]
+- route: "/*"
+  exec:
+    proc:
+      path: "echo"
+      args: ["Use 'POST /echo' with a body for it to be echoed back"]

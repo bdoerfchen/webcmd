@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"regexp"
 
-	"github.com/bdoerfchen/webcmd/src/model/config"
+	"github.com/bdoerfchen/webcmd/src/common/config"
 	"github.com/go-chi/chi/v5"
 )
 
