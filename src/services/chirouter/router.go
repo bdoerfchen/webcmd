@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"runtime"
 	"strings"
 	"time"
 
 	"github.com/bdoerfchen/webcmd/src/common/config"
 	"github.com/bdoerfchen/webcmd/src/common/execution"
+	"github.com/bdoerfchen/webcmd/src/common/version"
 	"github.com/bdoerfchen/webcmd/src/logging"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -119,6 +121,9 @@ func (r *chirouter) addRoute(route config.Route, executor execution.Executer, lo
 		for header, value := range exitResponse.Headers {
 			w.Header().Add(header, value)
 		}
+		// Add Server header
+		serverHeader := fmt.Sprintf("webcmd/%s (%s)", version.Full(), runtime.GOOS)
+		w.Header().Add("Server", serverHeader)
 
 		// Respond with command result and mapped status code from exit code
 		w.WriteHeader(exitResponse.StatusCode)

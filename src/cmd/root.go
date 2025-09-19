@@ -10,6 +10,7 @@ import (
 	"github.com/bdoerfchen/webcmd/src/common/execution"
 	"github.com/bdoerfchen/webcmd/src/common/process"
 	"github.com/bdoerfchen/webcmd/src/common/router"
+	"github.com/bdoerfchen/webcmd/src/common/version"
 	"github.com/bdoerfchen/webcmd/src/logging"
 	"github.com/bdoerfchen/webcmd/src/services/chirouter"
 	"github.com/bdoerfchen/webcmd/src/services/configloader"
@@ -61,6 +62,12 @@ func Start(ctx context.Context) {
 	// Server config flags
 	runCmd.Flags().Uint16VarP(&flagServerPort, "port", "p", 0, "Set the server port")
 	runCmd.Flags().StringVar(&flagServerHost, "host", "", "Set the host IP address to listen to")
+
+	// Configure version command
+	rootCmd.Version = version.Full()
+	if sha, err := version.CommitSha(); err == nil {
+		rootCmd.Version += "-" + sha[:10]
+	}
 
 	rootCmd.AddCommand(runCmd)
 	rootCmd.ExecuteContext(ctx)
