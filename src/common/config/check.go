@@ -43,9 +43,17 @@ func (r *Route) Check() (result RouteErrorCollection) {
 		}
 	}
 
-	// Check status codes
+	// Check exit codes
+	for _, codeMapping := range r.StatusCodes {
+		// Check for valid response stream names
+		if !codeMapping.ResponseStream.IsValid() {
+			result = append(result, RouteError{Message: fmt.Sprintf("exit code %v with invalid response stream '%s'", *codeMapping.ExitCode, codeMapping.ResponseStream), Level: ErrorLevelCritical})
+		}
+	}
+
+	// Check default status code
 	if !slices.ContainsFunc(r.StatusCodes, func(i ExitCodeMapping) bool { return i.ExitCode == nil }) {
-		result = append(result, RouteError{Message: "no default status code defined", Level: ErrorLevelInfo})
+		result = append(result, RouteError{Message: "no default status code for non-zero exit codes defined: uses 500 now", Level: ErrorLevelInfo})
 	}
 
 	// Check query params

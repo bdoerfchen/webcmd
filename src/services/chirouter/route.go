@@ -1,10 +1,13 @@
 package chirouter
 
 import (
+	"bytes"
 	"net/http"
 	"regexp"
+	"strings"
 
 	"github.com/bdoerfchen/webcmd/src/common/config"
+	"github.com/bdoerfchen/webcmd/src/common/process"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -12,15 +15,19 @@ const DefaultKey = -1
 
 type OptimizedRoute struct {
 	config.Route
-	StatusCodeMap map[int]config.ExitCodeMapping
+	StatusCodeMap map[int]OptimizedMapping
 	ParamNames    []string
+}
+
+type OptimizedMapping struct {
+	config.ExitCodeMapping
 }
 
 func OptimizeRoute(route config.Route) (result OptimizedRoute) {
 	result.Route = route
-	result.StatusCodeMap = make(map[int]config.ExitCodeMapping)
+	result.StatusCodeMap = make(map[int]OptimizedMapping)
 
-	// Convert all mapings and add them to map
+	// Convert all mappings and add them to map
 	for _, codeMap := range route.StatusCodes {
 		key := DefaultKey
 		if codeMap.ExitCode != nil {
@@ -36,15 +43,22 @@ func OptimizeRoute(route config.Route) (result OptimizedRoute) {
 			codeMap.StatusCode = 999
 		}
 
+		// Use default output stream if left empty
+		if codeMap.ResponseStream == "" {
+			codeMap.ResponseStream = route.ResponseStream
+		}
+
 		// Add entry
-		result.StatusCodeMap[key] = codeMap
+		result.StatusCodeMap[key] = OptimizedMapping{codeMap}
 	}
 
 	// Add defaults
 	if _, ok := result.StatusCodeMap[DefaultKey]; !ok {
-		result.StatusCodeMap[DefaultKey] = config.ExitCodeMapping{
-			StatusCode:    http.StatusInternalServerError,
-			ResponseEmpty: true,
+		result.StatusCodeMap[DefaultKey] = OptimizedMapping{
+			config.ExitCodeMapping{
+				StatusCode:     http.StatusInternalServerError,
+				ResponseStream: config.Both,
+			},
 		}
 	}
 
@@ -54,12 +68,29 @@ func OptimizeRoute(route config.Route) (result OptimizedRoute) {
 	return
 }
 
-func (o *OptimizedRoute) ExitCodeResponse(code int) config.ExitCodeMapping {
+func (o *OptimizedRoute) ExitCodeResponse(code int) OptimizedMapping {
 	if response, ok := o.StatusCodeMap[code]; ok {
 		return response
 	}
 
 	return o.StatusCodeMap[DefaultKey]
+}
+
+func (o *OptimizedMapping) ResponseBufferFor(proc *process.Process) *bytes.Buffer {
+	if o == nil {
+		return nil
+	}
+
+	switch strings.ToLower(string(o.ExitCodeMapping.ResponseStream)) {
+	case string(config.StdOut):
+		return &proc.StdOut
+	case string(config.StdErr):
+		return &proc.StdErr
+	case string(config.None):
+		return nil
+	default:
+		return &proc.StdOutErr
+	}
 }
 
 var paramMatcher = regexp.MustCompile(`{([^\/\\:]+)(?:\:[^}\/]+)*}`)
