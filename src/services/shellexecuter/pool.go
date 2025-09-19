@@ -18,7 +18,7 @@ func NewPool(size uint, template process.Template) *shellPool {
 		template: &template,
 	}
 
-	// Start worker that constantly fills the pool
+	// Fill pool in background for defined size
 	for range size {
 		go pool.give()
 	}

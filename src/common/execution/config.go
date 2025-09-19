@@ -26,7 +26,7 @@ func ConfigFromRoute(route *config.Route) Config {
 	} else if route.Exec.Shell != nil {
 		execConfig.Command = route.Exec.Shell.Command
 	} else {
-		// Should be called, as the app detects this case on config check and exits
+		// Should not be called, as the app detects this case on config check and exits
 		panic("missing exec config")
 	}
 	return execConfig
