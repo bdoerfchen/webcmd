@@ -13,7 +13,8 @@
             "args": [
                 "run", "-v",
                 "-c", "examples/exec",
-            ]
+            ],
+            "buildFlags": "-buildvcs=true"
         }
     ]
 }
