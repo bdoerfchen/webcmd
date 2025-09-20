@@ -1,4 +1,4 @@
-package executer
+package procexecuter
 
 import (
 	"context"
@@ -9,13 +9,13 @@ import (
 	"github.com/bdoerfchen/webcmd/src/common/process"
 )
 
-type executer struct{}
+type procExecuter struct{}
 
-func New() *executer {
-	return &executer{}
+func New() *procExecuter {
+	return &procExecuter{}
 }
 
-func (e *executer) Execute(ctx context.Context, config execution.Config) (proc *process.Process, exitCode int, err error) {
+func (e *procExecuter) Execute(ctx context.Context, config execution.Config) (proc *process.Process, exitCode int, err error) {
 	// Prepare new command
 	cmd, err := process.Prepare(&process.Template{
 		Command:   config.Command,
@@ -47,6 +47,6 @@ func (e *executer) Execute(ctx context.Context, config execution.Config) (proc *
 	return cmd, 0, nil
 }
 
-func (e *executer) Describe() (mode execution.ExecMode, attributes []any) {
+func (e *procExecuter) Describe() (mode execution.ExecMode, attributes []any) {
 	return execution.ModeProc, []any{}
 }
