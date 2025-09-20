@@ -28,8 +28,8 @@ func mergeCommandFlags(base *config.AppConfig, logger *slog.Logger) {
 	route := config.DefaultRoute()
 	// Define default response code 500
 	route.StatusCodes = append(route.StatusCodes, config.ExitCodeMapping{
-		StatusCode:    http.StatusInternalServerError,
-		ResponseEmpty: true,
+		StatusCode:     http.StatusInternalServerError,
+		ResponseStream: config.None,
 	})
 	routeTouched := false
 

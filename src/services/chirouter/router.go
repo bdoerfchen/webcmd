@@ -128,9 +128,9 @@ func (r *chirouter) addRoute(route config.Route, executor execution.Executer, lo
 		// Respond with command result and mapped status code from exit code
 		w.WriteHeader(exitResponse.StatusCode)
 		writtenLen := 0
-		if !exitResponse.ResponseEmpty {
-			w.Write(result.StdOutErr.Bytes())
-			writtenLen = len(result.StdOutErr.Bytes())
+		if buffer := exitResponse.ResponseBufferFor(result); buffer != nil {
+			w.Write(buffer.Bytes())
+			writtenLen = len(buffer.Bytes())
 		}
 
 		// Log and finish
