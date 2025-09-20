@@ -14,7 +14,7 @@ import (
 	"github.com/bdoerfchen/webcmd/src/logging"
 	"github.com/bdoerfchen/webcmd/src/services/chirouter"
 	"github.com/bdoerfchen/webcmd/src/services/configloader"
-	"github.com/bdoerfchen/webcmd/src/services/executer"
+	"github.com/bdoerfchen/webcmd/src/services/procexecuter"
 	"github.com/bdoerfchen/webcmd/src/services/server"
 	"github.com/bdoerfchen/webcmd/src/services/shellexecuter"
 	"github.com/spf13/cobra"
@@ -108,7 +108,7 @@ func runExec(ctx context.Context) {
 
 	// Setup executers (proc + shell)
 	var executers execution.ExecuterCollection
-	executers.Add(executer.New())          // Normal proc executer
+	executers.Add(procexecuter.New())      // Normal proc executer
 	executers.SetExcept(shellexecuter.New( // Shell executer with pool, except for windows
 		config.Modules.ShellPool.Size,
 		process.Template{
