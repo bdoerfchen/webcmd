@@ -23,6 +23,14 @@ func (r *Route) Check() (result RouteErrorCollection) {
 		result = append(result, RouteError{Message: "body will be ignored", Level: ErrorLevelInfo})
 	}
 
+	// Check route
+	if len(r.Route) == 0 {
+		result = append(result, RouteError{Message: "route must not be empty and will be set to '/'", Level: ErrorLevelWarning})
+		r.Route = "/"
+	} else if r.Route[0] != '/' {
+		r.Route = "/" + r.Route
+	}
+
 	// Check caching
 	if r.Caching && r.Method != http.MethodGet {
 		result = append(result, RouteError{Message: "caching only works on GET requests", Level: ErrorLevelWarning})
