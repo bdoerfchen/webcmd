@@ -23,6 +23,11 @@ func (r *Route) Check() (result RouteErrorCollection) {
 		result = append(result, RouteError{Message: "body will be ignored", Level: ErrorLevelInfo})
 	}
 
+	// Check caching
+	if r.Caching && r.Method != http.MethodGet {
+		result = append(result, RouteError{Message: "caching only works on GET requests", Level: ErrorLevelWarning})
+	}
+
 	// Check exec
 	if r.Exec.Proc == nil && r.Exec.Shell == nil {
 		result = append(result, RouteError{Message: "exec requires 'proc' or 'shell' config", Level: ErrorLevelCritical})

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bdoerfchen/webcmd/src/common/cacher"
 	"github.com/bdoerfchen/webcmd/src/common/config"
 	"github.com/bdoerfchen/webcmd/src/common/execution"
 	"github.com/bdoerfchen/webcmd/src/common/version"
@@ -17,17 +18,21 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 )
 
+var ServerHeader = fmt.Sprintf("webcmd/%s (%s)", version.Full(), runtime.GOOS)
+
 type chirouter struct {
 	router             chi.Router
 	sanitizer          *valueSanitizer
 	executerCollection *execution.ExecuterCollection
+	cacher             cacher.Cacher
 }
 
-func New(executerCollection *execution.ExecuterCollection) *chirouter {
+func New(executerCollection *execution.ExecuterCollection, cacher cacher.Cacher) *chirouter {
 	return &chirouter{
 		router:             chi.NewRouter(),
 		sanitizer:          newSanitizer(),
 		executerCollection: executerCollection,
+		cacher:             cacher,
 	}
 }
 
@@ -57,7 +62,6 @@ func (r *chirouter) Register(ctx context.Context, routes []config.Route) error {
 
 // Actual route registration with the handler function definition
 func (r *chirouter) addRoute(route config.Route, executor execution.Executer, logger *slog.Logger) {
-	routeLogger := logger.With(slog.String("route", route.Route))
 	routePattern, _ := strings.CutSuffix(route.Route, "/")
 
 	// Reusable end-of-request logging function for this route
@@ -71,20 +75,46 @@ func (r *chirouter) addRoute(route config.Route, executor execution.Executer, lo
 		)
 	}
 
-	// Register route to router
+	options := []string{}
+
+	// Define handler for this route
 	optimizedRoute := OptimizeRoute(route)
-	r.router.MethodFunc(route.Method, routePattern, func(w http.ResponseWriter, req *http.Request) {
+	routeHandler := r.handlerFor(&optimizedRoute, executor, logFn, logger)
+
+	// Wrap in caching middleware if configured
+	if optimizedRoute.Caching && optimizedRoute.Method == http.MethodGet {
+		routeHandler = r.cacher.Cache(routeHandler)
+		options = append(options, "caching")
+	}
+
+	// Register route
+	r.router.Method(optimizedRoute.Method, routePattern, routeHandler)
+
+	var optionsText string
+	if len(options) > 0 {
+		optionsText = fmt.Sprintf("(+%s)", strings.Join(options, ","))
+	}
+
+	logger.Debug(fmt.Sprintf("- %s %s %s", route.Method, routePattern, optionsText))
+}
+
+func (r *chirouter) Handler() http.Handler {
+	return r.router
+}
+
+func (r *chirouter) handlerFor(route *OptimizedRoute, executor execution.Executer, logFn loggingFn, logger *slog.Logger) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		ctx := req.Context()
 		startTime := time.Now()
 
 		// Execution config
-		execConfig := execution.ConfigFromRoute(&route)
+		execConfig := execution.ConfigFromRoute(&route.Route)
 		if route.AllowBody {
 			execConfig.Stdin = req.Body
 		}
 
 		// Load URL parameters as env variables
-		params := optimizedRoute.RequestParameters(req)
+		params := route.RequestParameters(req)
 		for key, value := range params {
 			// Skip unset values to keep defaults and reduce sanitization efforts
 			if value == "" {
@@ -100,9 +130,10 @@ func (r *chirouter) addRoute(route config.Route, executor execution.Executer, lo
 		result, exitCode, err := executor.Execute(ctx, execConfig)
 		if err != nil {
 			// Unexpected error, code 500, no response body
-			routeLogger.ErrorContext(ctx,
+			logger.ErrorContext(ctx,
 				"unexpected error while handling route",
 				slog.String("error", err.Error()),
+				slog.String("route", route.Route.Route),
 			)
 			w.WriteHeader(http.StatusInternalServerError)
 
@@ -112,7 +143,7 @@ func (r *chirouter) addRoute(route config.Route, executor execution.Executer, lo
 		}
 
 		// Load response config for exit code
-		exitResponse := optimizedRoute.ExitCodeResponse(exitCode)
+		exitResponse := route.ExitCodeResponse(exitCode)
 
 		// Set headers (default and exit code related)
 		for header, value := range route.Headers {
@@ -122,8 +153,7 @@ func (r *chirouter) addRoute(route config.Route, executor execution.Executer, lo
 			w.Header().Add(header, value)
 		}
 		// Add Server header
-		serverHeader := fmt.Sprintf("webcmd/%s (%s)", version.Full(), runtime.GOOS)
-		w.Header().Add("Server", serverHeader)
+		w.Header().Add("Server", ServerHeader)
 
 		// Respond with command result and mapped status code from exit code
 		w.WriteHeader(exitResponse.StatusCode)
@@ -136,10 +166,6 @@ func (r *chirouter) addRoute(route config.Route, executor execution.Executer, lo
 		// Log and finish
 		logFn(startTime, req, writtenLen, exitResponse.StatusCode)
 	})
-
-	logger.Debug(fmt.Sprintf("- %s %s", route.Method, routePattern))
 }
 
-func (r *chirouter) Handler() http.Handler {
-	return r.router
-}
+type loggingFn func(startTime time.Time, req *http.Request, responseSize int, responseCode int)

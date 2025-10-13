@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/bdoerfchen/webcmd/src/common/config"
 	"github.com/bdoerfchen/webcmd/src/common/execution"
 	"github.com/bdoerfchen/webcmd/src/common/process"
 	"github.com/bdoerfchen/webcmd/src/common/router"
@@ -17,6 +18,7 @@ import (
 	"github.com/bdoerfchen/webcmd/src/services/procexecuter"
 	"github.com/bdoerfchen/webcmd/src/services/server"
 	"github.com/bdoerfchen/webcmd/src/services/shellexecuter"
+	"github.com/bdoerfchen/webcmd/src/services/springercacher"
 	"github.com/spf13/cobra"
 )
 
@@ -84,17 +86,52 @@ func runExec(ctx context.Context) {
 	setupCtx = logging.AddToContext(setupCtx, logger)
 	logger.Info("server start")
 	fmt.Println()
-
 	logger.Debug("beginning server setup")
+
+	// Load config
+	config := loadConfig(setupCtx, logger)
+	// Load router
+	router := setupRouter(setupCtx, config, logger)
+	finishSetup() // Cancel setupCtx
+	logger.Debug("setup finished")
+	fmt.Println() // Empty log line
+
+	// Run server
+	if flagDryRun {
+		logger.Info("dry-run finished")
+		shutdown(logger, true)
+	}
+
+	runCtx := logging.AddToContext(ctx, logger)
+	server := server.New(config.Server)
+	err := server.Run(runCtx, router.Handler())
+	if err != nil {
+		logger.Error(err.Error())
+	}
+
+	shutdown(logger, true)
+}
+
+func shutdown(logger *slog.Logger, ok bool) {
+	logger.Info("shutting down...")
+
+	if !ok {
+		os.Exit(1)
+	}
+	os.Exit(0)
+}
+
+// Load application config from config file or/and command flags
+func loadConfig(ctx context.Context, logger *slog.Logger) *config.AppConfig {
 
 	// Read config
 	logger.Debug("load server configuration")
 	loader := configloader.New()
-	config, err := loader.Load(setupCtx, flagConfigFilePath)
+	config, err := loader.Load(ctx, flagConfigFilePath)
 	if err != nil {
 		logger.Error("failed to load config file: " + err.Error())
 		shutdown(logger, false)
-		return
+		return nil
 	}
 	// Merge parameters from cmd flags into app config
 	mergeCommandFlags(config, logger)
@@ -103,6 +140,18 @@ func runExec(ctx context.Context) {
 	// Check configuration
 	if err = checkConfig(config, logger); err != nil {
 		logger.Error(err.Error())
+		shutdown(logger, false)
+	}
+
+	return config
+}
+
+// Router integration with given app config
+func setupRouter(ctx context.Context, config *config.AppConfig, logger *slog.Logger) router.Router {
+	// Setup cache
+	cacher, err := springercacher.New(&config.Modules.Cache)
+	if err != nil {
+		logger.Error("failed to create cache module", slog.String("error", err.Error()))
 		shutdown(logger, false)
 	}
 
@@ -119,7 +168,7 @@ func runExec(ctx context.Context) {
 	), "windows")
 
 	// Setup routers with executers
-	var router router.Router = chirouter.New(&executers)
+	var router router.Router = chirouter.New(&executers, cacher)
 	logger.Debug("router initialized:")
 	for _, executer := range executers.Available() {
 		mode, attributes := executer.Describe()
@@ -127,37 +176,11 @@ func runExec(ctx context.Context) {
 	}
 
 	// Register routes
-	err = router.Register(setupCtx, config.Routes)
+	err = router.Register(ctx, config.Routes)
 	if err != nil {
 		logger.Error("error during route registration: " + err.Error())
 		shutdown(logger, false)
 	}
 
-	finishSetup() // Cancel setupCtx
-	logger.Debug("setup finished")
-	fmt.Println() // Empty log line
-
-	// Run server
-	if flagDryRun {
-		logger.Info("dry-run finished")
-		shutdown(logger, true)
-	}
-
-	runCtx := logging.AddToContext(ctx, logger)
-	server := server.New(config.Server)
-	err = server.Run(runCtx, router.Handler())
-	if err != nil {
-		logger.Error(err.Error())
-	}
-
-	shutdown(logger, true)
-}
-
-func shutdown(logger *slog.Logger, ok bool) {
-	logger.Info("shutting down...")
-
-	if !ok {
-		os.Exit(1)
-	}
-	os.Exit(0)
+	return router
 }
