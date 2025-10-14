@@ -6,7 +6,7 @@ import (
 )
 
 const MAJOR = "0"
-const MINOR = "1"
+const MINOR = "2"
 const PATCH = "0"
 
 func Full() string {
