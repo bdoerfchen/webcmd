@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"runtime"
 	"strings"
-	"time"
 
 	"github.com/bdoerfchen/webcmd/src/common/cacher"
 	"github.com/bdoerfchen/webcmd/src/common/config"
@@ -37,13 +36,17 @@ func New(executerCollection *execution.ExecuterCollection, cacher cacher.Cacher)
 }
 
 func (r *chirouter) Register(ctx context.Context, routes []config.Route) error {
-	// Basic middleware registration
-	r.router.Use(middleware.StripSlashes)
-	r.router.Use(middleware.RealIP)
-	r.router.Use(middleware.Recoverer)
-
+	// Setup logger
 	logger := logging.FromContext(ctx)
 	logger.Debug("begin route registration", slog.Int("count", len(routes)))
+
+	// Basic middleware registration
+	r.router.Use(
+		middleware.StripSlashes,
+		middleware.RealIP,
+		middleware.Recoverer,
+		AccessLogMiddleware(logger), // Custom middleware for logging requests and their responses
+	)
 
 	// Register all routes
 	for _, route := range routes {
@@ -63,23 +66,11 @@ func (r *chirouter) Register(ctx context.Context, routes []config.Route) error {
 // Actual route registration with the handler function definition
 func (r *chirouter) addRoute(route config.Route, executor execution.Executer, logger *slog.Logger) {
 	routePattern, _ := strings.CutSuffix(route.Route, "/")
-
-	// Reusable end-of-request logging function for this route
-	logFn := func(startTime time.Time, req *http.Request, responseSize int, responseCode int) {
-		url := req.URL.String()
-		elapsed := time.Since(startTime)
-		logger.Info(fmt.Sprintf("%s %s -> %v", route.Method, url, responseCode),
-			slog.Duration("responseTime", elapsed),
-			slog.Int("size", responseSize),
-			slog.String("userAgent", req.UserAgent()),
-		)
-	}
-
 	options := []string{}
 
 	// Define handler for this route
 	optimizedRoute := OptimizeRoute(route)
-	routeHandler := r.handlerFor(&optimizedRoute, executor, logFn, logger)
+	routeHandler := r.handlerFor(&optimizedRoute, executor, logger)
 
 	// Wrap in caching middleware if configured
 	if optimizedRoute.Caching && optimizedRoute.Method == http.MethodGet {
@@ -102,10 +93,9 @@ func (r *chirouter) Handler() http.Handler {
 	return r.router
 }
 
-func (r *chirouter) handlerFor(route *OptimizedRoute, executor execution.Executer, logFn loggingFn, logger *slog.Logger) http.HandlerFunc {
+func (r *chirouter) handlerFor(route *OptimizedRoute, executor execution.Executer, logger *slog.Logger) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		ctx := req.Context()
-		startTime := time.Now()
 
 		// Execution config
 		execConfig := execution.ConfigFromRoute(&route.Route)
@@ -137,8 +127,6 @@ func (r *chirouter) handlerFor(route *OptimizedRoute, executor execution.Execute
 			)
 			w.WriteHeader(http.StatusInternalServerError)
 
-			// Log and finish
-			logFn(startTime, req, 0, http.StatusInternalServerError)
 			return
 		}
 
@@ -157,15 +145,9 @@ func (r *chirouter) handlerFor(route *OptimizedRoute, executor execution.Execute
 
 		// Respond with command result and mapped status code from exit code
 		w.WriteHeader(exitResponse.StatusCode)
-		writtenLen := 0
 		if buffer := exitResponse.ResponseBufferFor(result); buffer != nil {
 			w.Write(buffer.Bytes())
-			writtenLen = len(buffer.Bytes())
 		}
 
-		// Log and finish
-		logFn(startTime, req, writtenLen, exitResponse.StatusCode)
 	})
 }
-
-type loggingFn func(startTime time.Time, req *http.Request, responseSize int, responseCode int)
