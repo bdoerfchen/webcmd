@@ -1,7 +1,13 @@
 modules:
   cache:
+    # Cache will forget third last recently used response
     maxResponsesCached: 2
+    # Duration to keep cache entries (2 minutes). For format refer to https://pkg.go.dev/time#ParseDuration
     TTL: 2m
+    # See https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cache-Control
+    controlDirectives:
+    - "public"
+    - "immutable"
 routes:
 # Don't cache, wait 2 seconds every time
 - route: "/caching/disabled"

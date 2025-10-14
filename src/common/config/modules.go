@@ -18,4 +18,5 @@ type ShellPoolConfig struct {
 type CacheConfig struct {
 	MaxResponsesCached uint           // Limit of request responses to cache
 	TTL                timem.Duration // Time to live for a cache entry
+	ControlDirectives  []string       // List of additional cache-control directives to include
 }
