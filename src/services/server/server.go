@@ -35,6 +35,7 @@ func (s *server) Run(ctx context.Context, handler http.Handler) error {
 		// Goroutine watching the context cancellation in parallel
 		<-ctx.Done()
 		// ...and shutting down the server
+		logger.Error("context cancelled")
 		server.Shutdown(ctx)
 	}()
 

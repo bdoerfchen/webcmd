@@ -20,6 +20,7 @@ type Route struct {
 	AllowBody      bool              // Enable reading the request body and writing it into stdin of the exec environment
 	Exec           RouteExec         // Exec config
 	ResponseStream StdStream         // Default output stream used in response for all exit codes
+	Caching        bool              // Enable caching for this route. Is disabled by default.
 }
 
 type ExitCodeMapping struct {
