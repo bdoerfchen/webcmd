@@ -1,6 +1,6 @@
 modules:
   cache:
-    # Cache will forget third last recently used response
+    # Cache will only keep 2 entries. On third different request, the least recently used route response will be removed
     maxResponsesCached: 2
     # Duration to keep cache entries (2 minutes). For format refer to https://pkg.go.dev/time#ParseDuration
     TTL: 2m

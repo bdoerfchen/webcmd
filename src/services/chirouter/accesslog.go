@@ -57,7 +57,7 @@ func (w *trackingResponseWriter) BytesWritten() int {
 // Returns the HTTP status code written to the response
 func (w *trackingResponseWriter) StatusCode() int {
 	if w.statusCode == 0 {
-		return http.StatusOK // Default to 200 if headers aren't written
+		return http.StatusOK // Default to 200 if status code wasn't explicitly written
 	}
 	return w.statusCode
 }
