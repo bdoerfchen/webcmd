@@ -6,7 +6,9 @@ import (
 	"strings"
 
 	"github.com/bdoerfchen/webcmd/src/common/config"
+	"github.com/bdoerfchen/webcmd/src/common/params"
 	"github.com/bdoerfchen/webcmd/src/common/process"
+	"github.com/bdoerfchen/webcmd/src/services/paramcollection"
 )
 
 const DefaultKey = -1
@@ -14,7 +16,7 @@ const DefaultKey = -1
 type OptimizedRoute struct {
 	config.Route
 	StatusCodeMap map[int]OptimizedMapping
-	parameters    *parameterCollection
+	parameters    params.ParameterProvider
 }
 
 type OptimizedMapping struct {
@@ -61,7 +63,7 @@ func OptimizeRoute(route config.Route) (result OptimizedRoute) {
 	}
 
 	// Optimize parameter retrieval
-	result.parameters = NewParameterCollection(route)
+	result.parameters = paramcollection.New(route)
 
 	return
 }

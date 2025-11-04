@@ -102,10 +102,7 @@ func (r *chirouter) handlerFor(route *OptimizedRoute, executor execution.Execute
 		}
 
 		// Load parameters as env variables
-		params := route.parameters.For(req)
-		for key, value := range params {
-			execConfig.Env[key] = value
-		}
+		execConfig.Env = route.parameters.For(req)
 
 		// On handle, start executor for route
 		result, exitCode, err := executor.Execute(ctx, execConfig)
