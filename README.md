@@ -1,7 +1,7 @@
 # Overview
-<img src="webcmd.svg" height="100">
+<img src="assets/logo/webcmd.svg" height="100">
 
-> "webcmd is a simple webserver with the aim to bridge HTTP and shell scripts"
+> "webcmd is your fast and simple bridge between the web and shell scripts with focus on customizability and security!"
 
 It aims to be
 - Easy to configure
