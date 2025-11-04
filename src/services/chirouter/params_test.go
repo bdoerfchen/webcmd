@@ -1,10 +1,8 @@
-package chirouter_test
+package chirouter
 
 import (
 	"testing"
 
-	"github.com/bdoerfchen/webcmd/src/common/config"
-	"github.com/bdoerfchen/webcmd/src/services/chirouter"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -24,8 +22,8 @@ func TestParseParameters(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.Name, func(t *testing.T) {
-			route := chirouter.OptimizeRoute(config.Route{Route: tc.Route})
-			assert.ElementsMatch(t, route.ParamNames, tc.ExpectedParamNames)
+			foundParamNames := paramNamesInRoute(tc.Route)
+			assert.ElementsMatch(t, foundParamNames, tc.ExpectedParamNames)
 		})
 	}
 }

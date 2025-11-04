@@ -14,9 +14,8 @@ type Route struct {
 	Method         string            // HTTP method
 	Route          string            // Route pattern, includes the url path parameters
 	Headers        map[string]string // Default response headers for this route
-	QueryParams    []string          // List of allowed url query parameters
+	Parameters     []RouteParameter  // List of parameters to load and inject as environment variables
 	StatusCodes    []ExitCodeMapping // List of exit-code to status-code mappings
-	Env            map[string]string // Environment variable map
 	AllowBody      bool              // Enable reading the request body and writing it into stdin of the exec environment
 	Exec           RouteExec         // Exec config
 	ResponseStream StdStream         // Default output stream used in response for all exit codes
@@ -56,8 +55,6 @@ func DefaultRoute() Route {
 		StatusCodes: []ExitCodeMapping{
 			{ExitCode: &zero, StatusCode: 200},
 		},
-		Env:            make(map[string]string),
-		QueryParams:    make([]string, 0),
 		ResponseStream: Both,
 	}
 }
