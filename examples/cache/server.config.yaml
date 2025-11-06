@@ -23,10 +23,12 @@ routes:
 # Cache with query parameters 
 - route: "/caching/enabled-params"
   caching: true
-  queryParams: ["name"]
   exec:
     shell:
-      command: "sleep 2 && echo Hello ${WC_NAME-darling}, here I am!"
+      command: "sleep 2 && echo Hello ${WC_NAME:=darling}, here I am!"
+  parameters:
+  - name: "name"
+    source: "query"
 - route: "/*"
   caching: true
   exec:
