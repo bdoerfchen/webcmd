@@ -62,6 +62,13 @@ This is how webcmd maps parameter names into variable names:
 - If the custom name in `as` starts with a number, the name is prefixed with `WC_`
 
 
+#### Request Body
+The request body can be considered yet another type of parameter. However, it is handled differently and thus not configured the same way as the other parameters. 
+
+To enable reading the request body for a route, its field `allowBody` needs to be set to `true`. Reading the request body is only available for `POST` and `PUT` routes - allowing it for the other methods will result in a warning message and it being ignored.
+
+The content of the request body can be read from `/dev/stdin`. With the shell executer its content can be read for example, with `cat -`. You can find a simple example under [/examples/echo](/examples/echo/server.config.yaml)
+
 
 # Security
 "Bridging shell scripts and the web" is powerful but also comes with a risk. These guidelines may help you to reduce the risk of an attack:
