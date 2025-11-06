@@ -88,7 +88,7 @@ For webcmd the sanitization is quite simple and works by removing certain charac
 If this leads to some unwanted behaviour, sanitization can be turned off for each parameter individually by setting `disableSanitization` to `true`.
 
 > [!CAUTION]  
-> Disabling santization is a huge risk with the `shell` executer and thus routes where it is disabled should only use `proc` for execution!  
+> Disabling santization is a huge risk with the `shell` executer. Routes that have it disabled should only use `proc` for execution!  
 > Find more information in [/examples/attack](/examples/attack/server.config.yaml)
 
 
