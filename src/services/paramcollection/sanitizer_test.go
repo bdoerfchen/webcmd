@@ -20,6 +20,7 @@ func TestSanitizer(t *testing.T) {
 		{Name: "no command concat", InputValue: "; sudo cat /etc/shadow", ExpectedValue: " sudo cat /etc/shadow"},
 		{Name: "no & concat", InputValue: "& sudo cat /etc/shadow", ExpectedValue: " sudo cat /etc/shadow"},
 		{Name: "no | concat", InputValue: "| sudo cat /etc/shadow", ExpectedValue: " sudo cat /etc/shadow"},
+		{Name: "no quotes", InputValue: "something\"; rm -rf /; export PATH=\"", ExpectedValue: "something rm -rf / export PATH="},
 	}
 
 	for _, tc := range testCases {

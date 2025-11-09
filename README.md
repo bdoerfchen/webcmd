@@ -25,7 +25,7 @@ It aims to be
 ### Exec Mode
 
 ### Parameters
-For webcmd, route parameters are the interface between http requests and the executing process. For a given route, you can define a list of parameters that are used to translate HTTP request input into environment variables - readable by shell scripts and normal executables alike. Values can be retrieved from a request's route, query or header. Additionally you can define constants that are injected as environment variables as well.
+For webcmd, route parameters are the interface between HTTP requests and the executing process. For a given route, you can define a list of parameters that are used to translate HTTP request input into environment variables - readable by shell scripts and normal executables alike. Values can be retrieved from a request's route, query or header. Additionally you can define constants that are injected as environment variables as well.
 
 #### Define Parameter
 
@@ -56,10 +56,12 @@ _But what are the names of the environment variables?_
 In general, the names have to follow this pattern: `[A-Za-z_][0-9A-Za-z_]`. What does it mean? The name must only consist of ASCII characters, numbers and underscores - but the first character must not be a number.
 
 This is how webcmd maps parameter names into variable names:  
-- With no custom name defined with `as`, the name is set to `WC_{uppercase(param.name)}`
-- Otherwise the value from `as` is used
-- Prohibited characters are replaced with `_` (whitespace, dashes, etc.)
-- If the custom name in `as` starts with a number, the name is prefixed with `WC_`
+- With no custom name defined, the name is set to `WC_{uppercase(param.name)}`
+- Otherwise you can set it explicitly with `param.as`
+- But prohibited characters are replaced with `_` (everything other than A-Z, a-z, 0-9 and an underscore). HTTP header names are particularly affected.
+- If the custom name in `param.as` starts with a number, the name is prefixed with `WC_`
+
+When no value is provided by the user, or an empty value is provided, the value in `param.default` is used. When this is not set explicitly in the configuration, the value is an empty string. The meaning for this is that the environment variable will always be set, but it might be empty.
 
 
 #### Request Body
@@ -67,7 +69,7 @@ The request body can be considered yet another type of parameter. However, it is
 
 To enable reading the request body for a route, its field `allowBody` needs to be set to `true`. Reading the request body is only available for `POST` and `PUT` routes - allowing it for the other methods will result in a warning message and it being ignored.
 
-The content of the request body can be read from `/dev/stdin`. With the shell executer its content can be read for example, with `cat -`. You can find a simple example under [/examples/echo](/examples/echo/server.config.yaml)
+The content of the request body can be read from the standard input stream (`/dev/stdin`). With the shell executer its content can be read for example, with `cat -`. You can find a simple example under [/examples/echo](/examples/echo/server.config.yaml)
 
 
 # Security
@@ -79,16 +81,16 @@ The content of the request body can be read from `/dev/stdin`. With the shell ex
 - Only install necessary packages into your execution environment.
 
 ## Input Sanitization
-Executing shell commands with custom user input does not only sound dangerous - it is. That is why all user input is undergoing santization before being exported as an environment variable. This comes at a small performance cost, but is worth it as a first line of defense to prevent users from executing arbitrary code on the server.  
-It is worth reading more about [Command Injection](https://owasp.org/www-community/attacks/Command_Injection).
+Executing shell commands with custom user input does not only sound dangerous - it is. That is why all user input, **except the request body**, is undergoing sanitization before being exported as an environment variable. This comes at a small performance cost, but is worth it as a first line of defense to prevent users from executing arbitrary code on the server.  
+It is recommended to read more about [Command Injection](https://owasp.org/www-community/attacks/Command_Injection) to be sensitized for potential risks.
 
-For webcmd the sanitization is quite simple and works by removing certain characters: 
+For webcmd the sanitization is quite simple and works by removing all occurances of certain characters within a given value: 
 > ; # % $ " ` ' & |
 
 If this leads to some unwanted behaviour, sanitization can be turned off for each parameter individually by setting `disableSanitization` to `true`.
 
 > [!CAUTION]  
-> Disabling santization is a huge risk with the `shell` executer. Routes that have it disabled should only use `proc` for execution!  
+> Disabling sanitization is a huge risk with the `shell` executer. Routes that have it disabled should only use `proc` for execution!  
 > Find more information in [/examples/attack](/examples/attack/server.config.yaml)
 
 
