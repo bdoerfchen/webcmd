@@ -98,6 +98,7 @@ func (c *ParameterCollection) EnvNames() []string {
 	return result
 }
 
+// Route parameters are defined as {name:regex} -> we want the name with the first capture group
 var routeParamMatcher = regexp.MustCompile(`{([^\/\\:]+)(?:\:[^}\/]+)*}`)
 
 func paramNamesInRoute(routePattern string) (result []string) {
