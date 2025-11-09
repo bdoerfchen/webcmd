@@ -21,7 +21,6 @@ var ServerHeader = fmt.Sprintf("webcmd/%s (%s)", version.Full(), runtime.GOOS)
 
 type chirouter struct {
 	router             chi.Router
-	sanitizer          *valueSanitizer
 	executerCollection *execution.ExecuterCollection
 	cacher             cacher.Cacher
 }
@@ -29,10 +28,13 @@ type chirouter struct {
 func New(executerCollection *execution.ExecuterCollection, cacher cacher.Cacher) *chirouter {
 	return &chirouter{
 		router:             chi.NewRouter(),
-		sanitizer:          newSanitizer(),
 		executerCollection: executerCollection,
 		cacher:             cacher,
 	}
+}
+
+func (r *chirouter) Handler() http.Handler {
+	return r.router
 }
 
 func (r *chirouter) Register(ctx context.Context, routes []config.Route) error {
@@ -89,10 +91,6 @@ func (r *chirouter) addRoute(route config.Route, executor execution.Executer, lo
 	logger.Debug(fmt.Sprintf("- %s %s %s", route.Method, routePattern, optionsText))
 }
 
-func (r *chirouter) Handler() http.Handler {
-	return r.router
-}
-
 func (r *chirouter) handlerFor(route *OptimizedRoute, executor execution.Executer, logger *slog.Logger) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		ctx := req.Context()
@@ -103,18 +101,8 @@ func (r *chirouter) handlerFor(route *OptimizedRoute, executor execution.Execute
 			execConfig.Stdin = req.Body
 		}
 
-		// Load URL parameters as env variables
-		params := route.RequestParameters(req)
-		for key, value := range params {
-			// Skip unset values to keep defaults and reduce sanitization efforts
-			if value == "" {
-				continue
-			}
-			// convert key to env variable format
-			key = config.RouteParamPrefix + strings.ToUpper(key)
-			// Sanitize input and add to route env map
-			execConfig.Env[key] = r.sanitizer.Sanitize(value)
-		}
+		// Load parameters as env variables
+		execConfig.Env = route.parameters.For(req)
 
 		// On handle, start executor for route
 		result, exitCode, err := executor.Execute(ctx, execConfig)

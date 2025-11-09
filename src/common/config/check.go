@@ -70,10 +70,23 @@ func (r *Route) Check() (result RouteErrorCollection) {
 	}
 
 	// Check query params
-	for _, param := range r.QueryParams {
-		if invalidQueryParam.MatchString(param) {
-			result = append(result, RouteError{Message: fmt.Sprintf("query param '%s' is not a valid name", param), Level: ErrorLevelCritical})
+	for _, param := range r.Parameters {
+		// Check name not empty
+		if param.Name == "" {
+			result = append(result, RouteError{Message: "empty parameter name is not allowed", Level: ErrorLevelCritical})
 		}
+
+		// Check source is valid
+		if !slices.Contains(allowedParamSources, param.Source) {
+			result = append(result, RouteError{Message: fmt.Sprintf("param '%s' has invalid source: %s", param.Name, param.Source), Level: ErrorLevelCritical})
+		}
+
+		// Check "as" is valid
+		if param.As != "" && !validEnvName.MatchString(param.As) {
+			result = append(result, RouteError{Message: fmt.Sprintf("param '%s' has invalid redefined env variable name: %s", param.Name, param.As), Level: ErrorLevelCritical})
+		}
+
+		// TODO: check and print resulting env variable names?
 	}
 
 	// OS specific remarks
@@ -86,5 +99,5 @@ func (r *Route) Check() (result RouteErrorCollection) {
 	return
 }
 
-// Must not start with a number, or contain something else than ASCII characters, numbers or underscores
-var invalidQueryParam = regexp.MustCompile(`^[\d]|[^\w\d_]+`)
+// Regex for valid env names
+var validEnvName = regexp.MustCompile(`^[\w_][\d\w_]+$`)

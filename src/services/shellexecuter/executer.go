@@ -32,7 +32,7 @@ func (e *shellExecuter) Execute(ctx context.Context, config execution.Config) (p
 	// Env exports prepended to the command
 	var envExportCmd strings.Builder
 	for key, value := range config.Env {
-		envExportCmd.WriteString(fmt.Sprintf("export %s=%s; ", key, value))
+		envExportCmd.WriteString(fmt.Sprintf("export %s=\"%s\"; ", key, value))
 	}
 
 	// - Body preparation | A bit more complicated here as everything runs over stdin

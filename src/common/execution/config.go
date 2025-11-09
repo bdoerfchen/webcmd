@@ -2,7 +2,6 @@ package execution
 
 import (
 	"io"
-	"maps"
 
 	"github.com/bdoerfchen/webcmd/src/common/config"
 )
@@ -17,15 +16,17 @@ type Config struct {
 func ConfigFromRoute(route *config.Route) Config {
 	// Build exec config
 	execConfig := Config{
-		Env:   maps.Clone(route.Env),
+		Env:   make(map[string]string),
 		Stdin: nil,
 	}
-	if route.Exec.Proc != nil {
+
+	switch {
+	case route.Exec.Proc != nil:
 		execConfig.Command = route.Exec.Proc.Path
 		execConfig.Args = route.Exec.Proc.Args
-	} else if route.Exec.Shell != nil {
+	case route.Exec.Shell != nil:
 		execConfig.Command = route.Exec.Shell.Command
-	} else {
+	default:
 		// Should not be called, as the app detects this case on config check and exits
 		panic("missing exec config")
 	}

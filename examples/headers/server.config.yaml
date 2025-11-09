@@ -3,7 +3,7 @@ routes:
   exec:
     proc:
       path: "bash"
-      args: ["-c", "exit ${WC_CODE-0}"]
+      args: ["-c", "exit ${WC_CODE:=0}"]
   headers: {"X-Default": "This is sent by default"}
   statusCodes:
   - exitCode: 0
